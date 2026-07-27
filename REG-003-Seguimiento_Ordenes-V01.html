@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro de Seguimiento de Órdenes – SGC</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --accent:   #0E6B8A;
+  --accent-d: #094E66;
+  --accent-l: #E4F2F7;
+  --bg:       #ECEEF0;
+  --surface:  #FFFFFF;
+  --border:   #D0D4D9;
+  --border-d: #B0B6BC;
+  --text:     #1C2226;
+  --text-2:   #5A6470;
+  --text-3:   #8A949E;
+  --ok-bg:    #EAF5EC; --ok-text: #1E6B2E; --ok-bd: #A8D5AE;
+  --warn-bg:  #FEF9EC; --warn-text: #8A5C00; --warn-bd: #ECD98A;
+  --err-bg:   #FDEDED; --err-text: #B72020; --err-bd: #F5AAAA;
+  --nav-h: 40px;
+  --radius: 4px;
+  --font:  'IBM Plex Sans', sans-serif;
+  --mono:  'IBM Plex Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); font-size: 13px; color: var(--text); background: var(--bg); min-height: 100vh; line-height: 1.4; }
+
+/* ── NAV ─────────────────────────────────────────────────── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--nav-h); background: var(--accent-d);
+  display: flex; align-items: center;
+  padding: 0 16px; gap: 4px; z-index: 200;
+  border-bottom: 2px solid var(--accent);
+  overflow-x: auto;
+}
+.nav-brand {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: rgba(255,255,255,.9); letter-spacing: .06em; text-transform: uppercase;
+  padding-right: 14px; margin-right: 6px;
+  border-right: 1px solid rgba(255,255,255,.2); white-space: nowrap;
+}
+nav a {
+  font-size: 11px; font-weight: 500;
+  color: rgba(255,255,255,.65);
+  text-decoration: none; padding: 5px 11px;
+  border-radius: 3px; white-space: nowrap;
+  transition: background .15s, color .15s;
+}
+nav a:hover { background: rgba(255,255,255,.12); color: white; }
+nav a.active { background: rgba(255,255,255,.18); color: white; font-weight: 700; }
+.nav-end { margin-left: auto; display: flex; align-items: center; gap: 6px; padding-left: 12px; border-left: 1px solid rgba(255,255,255,.15); }
+.live-dot { width: 6px; height: 6px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 6px #4ADE80; display: none; }
+#syncStatus { font-size: 11px; font-family: var(--mono); color: rgba(255,255,255,.55); white-space: nowrap; }
+#syncStatus.sync-ok    { color: #4ADE80; }
+#syncStatus.sync-error { color: #F87171; }
+
+/* ── LAYOUT ──────────────────────────────────────────────── */
+.layout { padding: calc(var(--nav-h) + 20px) 20px 40px; max-width: 1440px; margin: 0 auto; display: flex; flex-direction: column; gap: 32px; }
+.section-page { display: flex; flex-direction: column; gap: 0; }
+
+/* ── CARD ────────────────────────────────────────────────── */
+.card { background: var(--surface); border: 1px solid var(--border); overflow: hidden; }
+.section-page .card + .card { border-top: none; }
+.section-page .card:first-child { border-radius: var(--radius) var(--radius) 0 0; }
+.section-page .card:last-child  { border-radius: 0 0 var(--radius) var(--radius); }
+
+/* ── DOC HEADER ──────────────────────────────────────────── */
+.doc-header { display: grid; grid-template-columns: 90px 1fr auto; border-bottom: 1px solid var(--border); }
+.logo-box { background: var(--accent); display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--border); }
+.logo-text { font-family: var(--mono); font-size: 18px; font-weight: 600; color: white; letter-spacing: .08em; }
+.doc-title-area { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 10px 20px; border-right: 1px solid var(--border); }
+.doc-title { font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.doc-subtitle { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+.doc-meta { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+.meta-cell { padding: 6px 12px; min-width: 110px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 1px; }
+.meta-cell:nth-child(1),.meta-cell:nth-child(2) { border-bottom: 1px solid var(--border); }
+.meta-label { font-size: 9px; color: var(--text-3); text-transform: uppercase; letter-spacing: .07em; }
+.meta-value { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.meta-input { font-family: var(--mono); font-size: 12px; font-weight: 600; border: none; outline: none; background: transparent; color: var(--text); width: 100%; }
+
+/* ── TOP BAR ─────────────────────────────────────────────── */
+.top-bar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.leg-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2); }
+.leg-dot { width: 10px; height: 10px; border-radius: 2px; }
+.dot-open   { background: var(--err-bg);  border: 1px solid var(--err-bd); }
+.dot-closed { background: var(--ok-bg);   border: 1px solid var(--ok-bd); }
+.dot-none   { background: var(--surface); border: 1px solid var(--border); }
+.sort-note { font-size: 11px; color: var(--text-3); font-style: italic; }
+.counters { margin-left: auto; display: flex; gap: 8px; }
+.cnt { display: flex; align-items: center; gap: 5px; padding: 3px 12px; border-radius: 10px; font-size: 11px; font-weight: 700; font-family: var(--mono); }
+.cnt-o { background: var(--err-bg); color: var(--err-text); border: 1px solid var(--err-bd); }
+.cnt-c { background: var(--ok-bg);  color: var(--ok-text);  border: 1px solid var(--ok-bd); }
+
+/* ── CARD BODY ───────────────────────────────────────────── */
+.card-body { padding: 14px 16px 16px; }
+
+/* ── SECTION TITLE ───────────────────────────────────────── */
+.section-title { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid var(--accent-l); display: flex; align-items: center; gap: 6px; }
+.section-title::before { content: ''; display: inline-block; width: 3px; height: 12px; background: var(--accent); border-radius: 2px; }
+
+/* ── TOOLBAR ─────────────────────────────────────────────── */
+.toolbar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.spacer { flex: 1; }
+
+/* ── BUTTONS ─────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; font-family: var(--font); font-size: 12px; font-weight: 600; border-radius: var(--radius); cursor: pointer; border: 1px solid; white-space: nowrap; transition: filter .1s; }
+.btn:hover { filter: brightness(.93); }
+.btn-primary { background: var(--accent);  border-color: var(--accent);  color: white; }
+.btn-ok      { background: var(--ok-bg);   border-color: var(--ok-bd);   color: var(--ok-text); }
+.btn-light   { background: var(--surface); border-color: var(--border);  color: var(--text-2); }
+.btn-danger  { background: var(--err-bg);  border-color: var(--err-bd);  color: var(--err-text); }
+.sync-inline { font-size: 11px; font-family: var(--mono); color: var(--text-3); }
+.sync-inline.ok    { color: var(--ok-text); font-weight: 600; }
+.sync-inline.dirty { color: var(--warn-text); font-weight: 600; }
+
+/* ── TABLE ───────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.tbl th {
+  background: var(--bg); font-size: 10px; font-weight: 700;
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-2);
+  padding: 6px 6px; text-align: center;
+  border-top: 1px solid var(--border); border-bottom: 1px solid var(--border-d);
+  border-right: 1px solid var(--border); vertical-align: middle; line-height: 1.3;
+}
+.tbl th:last-child { border-right: none; }
+.th-sub { font-size: 9px; font-weight: 400; color: var(--text-3); display: block; }
+.tbl td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0; vertical-align: middle; font-size: 12px; }
+.tbl td:last-child { border-right: none; }
+.tbl tbody tr:last-child td { border-bottom: none; }
+
+/* ROW STATES */
+.row-open   td { background: #FEF5F5 !important; }
+.row-closed td { background: #F4FBF5 !important; }
+.row-neutral td { background: var(--surface); }
+.row-neutral:nth-child(odd) td { background: #F9FBFC; }
+
+/* CELL INPUT */
+.ci {
+  width: 100%; height: 100%; min-height: 34px;
+  border: none; outline: none; background: transparent;
+  font-family: var(--font); font-size: 12px; color: var(--text);
+  padding: 4px 6px; display: block;
+}
+.ci::placeholder { color: var(--text-3); font-style: italic; font-size: 11px; }
+.ci:focus { background: rgba(14,107,138,.04); }
+.ci[type=date] { font-family: var(--mono); font-size: 11px; cursor: pointer; }
+.ci[type=number] { -moz-appearance: textfield; }
+.ci[type=number]::-webkit-outer-spin-button,
+.ci[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.ci:disabled { opacity: .4; cursor: not-allowed; background: var(--bg); }
+.ci.over-limit { background: var(--err-bg) !important; color: var(--err-text) !important; }
+
+/* TEXTAREA AUTO-GROW */
+.ci-ta {
+  width: 100%; min-height: 34px;
+  border: none; outline: none; background: transparent;
+  font-family: var(--font); font-size: 12px; color: var(--text);
+  padding: 4px 6px; display: block;
+  resize: none; overflow: hidden; line-height: 1.4;
+}
+.ci-ta::placeholder { color: var(--text-3); font-style: italic; font-size: 11px; }
+.ci-ta:hover { background: rgba(14,107,138,.03); }
+.ci-ta:focus { outline: none; background: rgba(14,107,138,.04); }
+.ci-ta:disabled { opacity: .4; cursor: not-allowed; background: var(--bg); }
+
+/* TIPO CHECKBOXES */
+.tipo-wrap { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; }
+.tipo-wrap label { font-size: 11px; color: var(--text); display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.tipo-wrap input[type=checkbox] {
+  width: 12px; height: 12px; accent-color: var(--accent);
+  appearance: none; -webkit-appearance: none;
+  border: 1px solid var(--border); border-radius: 2px; background: white;
+  cursor: pointer; position: relative; flex-shrink: 0;
+}
+.tipo-wrap input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+.tipo-wrap input[type=checkbox]:checked::after {
+  content: ''; position: absolute; left: 2px; top: 0px;
+  width: 4px; height: 7px; border: 1.5px solid white;
+  border-top: none; border-left: none; transform: rotate(45deg);
+}
+
+/* NC WRAP */
+.nc-wrap { display: flex; flex-direction: column; gap: 3px; padding: 4px 6px; }
+.nc-wrap label { font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.nc-wrap input[type=checkbox] { width: 12px; height: 12px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0; }
+
+/* ESTADO SELECT */
+.sel-estado {
+  width: 100%; height: 100%; min-height: 34px;
+  border: none; outline: none; background: transparent;
+  font-family: var(--font); font-size: 11px; font-weight: 700;
+  cursor: pointer; padding: 4px 22px 4px 6px;
+  appearance: none; -webkit-appearance: none;
+  background-repeat: no-repeat; background-position: right 5px center;
+}
+.s-open {
+  background-color: var(--err-bg) !important; color: var(--err-text) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%23B72020'/%3E%3C/svg%3E") !important;
+}
+.s-closed {
+  background-color: var(--ok-bg) !important; color: var(--ok-text) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%231E6B2E'/%3E%3C/svg%3E") !important;
+}
+.s-none {
+  background-color: var(--bg) !important; color: var(--text-3) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%238A949E'/%3E%3C/svg%3E") !important;
+}
+
+/* DECISION SELECT */
+.sel-dec {
+  width: 100%; height: 100%; min-height: 34px;
+  border: none; outline: none; background: transparent;
+  font-family: var(--font); font-size: 11px; cursor: pointer;
+  padding: 4px 20px 4px 6px;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='9' height='6'%3E%3Cpath d='M0 0l4.5 6L9 0z' fill='%235A6470'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 5px center;
+}
+.dec-destruccion { background-color: #F3E5F5 !important; color: #6A1B9A !important; }
+.dec-reproceso   { background-color: var(--warn-bg) !important; color: var(--warn-text) !important; }
+.dec-concesion   { background-color: #E3F2FD !important; color: #1565C0 !important; }
+.sel-dec:disabled { opacity: .35; cursor: not-allowed; }
+
+/* PROB COUNT */
+.prob-count-row { display: flex; align-items: center; gap: 5px; padding: 3px 6px 2px; border-bottom: 1px solid var(--border); background: var(--accent-l); }
+.prob-count-lbl { font-size: 10px; font-weight: 600; color: var(--accent-d); }
+.prob-count-inp { width: 36px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; text-align: center; padding: 1px 3px; font-family: var(--mono); outline: none; background: white; }
+.cant-warning { font-size: 10px; color: var(--err-text); padding: 1px 6px; display: none; }
+.cant-warning.visible { display: block; }
+
+/* UTILIDADES INLINE → CLASE */
+.ci-mono    { font-family: var(--mono) !important; font-weight: 600 !important; }
+.ci-center  { text-align: center !important; }
+.td-top     { vertical-align: top !important; }
+.td-mid     { vertical-align: middle !important; }
+.td-pad0    { padding: 0 !important; }
+
+/* EMPTY STATE */
+.empty-state { padding: 32px 16px; text-align: center; color: var(--text-3); font-size: 12px; font-style: italic; }
+.btn-add-row { display: flex; align-items: center; justify-content: center; width: 100%; height: 34px; margin-top: 4px; font-family: var(--font); font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer; border: 1.5px dashed var(--accent-l); border-radius: var(--radius); background: transparent; }
+.btn-add-row:hover { background: var(--accent-l); }
+
+/* PRINT */
+@media print {
+  @page { size: A3 landscape; margin: 8mm; }
+  nav, .toolbar, .no-print { display: none !important; }
+  body { background: white; }
+  .layout { padding: 0; gap: 0; }
+  .section-page { display: none !important; }
+  .section-page.printing { display: flex !important; }
+  .card { box-shadow: none; border-radius: 0; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">Seguimiento de Órdenes</span>
+  <a href="#sec-fab" onclick="setActive(this)">Fabricación</a>
+  <a href="#sec-ins" onclick="setActive(this)">Instrumental</a>
+  <a href="#sec-ens" onclick="setActive(this)">Ensamble</a>
+  <div class="nav-end">
+    <div class="live-dot" id="liveDot"></div>
+    <span id="syncStatus">—</span>
+  </div>
+</nav>
+
+<div class="layout">
+
+  <!-- ══════════════════════════════════════════════
+       SECCIÓN 1: FABRICACIÓN
+  ══════════════════════════════════════════════ -->
+  <div class="section-page" id="sec-fab">
+
+    <div class="card">
+      <div class="doc-header">
+        <div class="logo-box"><span class="logo-text">BT</span></div>
+        <div class="doc-title-area">
+          <div class="doc-title">Registro de Seguimiento de Órdenes de Fabricación</div>
+          <div class="doc-subtitle">Control y trazabilidad de órdenes de fabricación</div>
+        </div>
+        <div class="doc-meta">
+          <div class="meta-cell"><span class="meta-label">Aprobación</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Entrada en vigor</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Código</span><input class="meta-input" type="text" value="REG-003"></div>
+          <div class="meta-cell"><span class="meta-label">Versión</span><span class="meta-value">01</span></div>
+        </div>
+      </div>
+      <div class="top-bar">
+        <div class="leg-item"><div class="leg-dot dot-open"></div> Abierta</div>
+        <div class="leg-item"><div class="leg-dot dot-closed"></div> Cerrada</div>
+        <div class="leg-item"><div class="leg-dot dot-none"></div> Sin estado</div>
+        <span class="sort-note">Abiertas primero · ordenadas por N° orden · cerradas al final</span>
+        <div class="counters">
+          <div class="cnt cnt-o">Abiertas: <span id="cnt-open-fab">0</span></div>
+          <div class="cnt cnt-c">Cerradas: <span id="cnt-closed-fab">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Órdenes de fabricación</div>
+        <div class="toolbar no-print">
+          <button class="btn btn-primary" onclick="addOrder('fab')">＋ Agregar orden</button>
+          <button class="btn btn-ok" onclick="saveSection('fab')">Guardar</button>
+          <button class="btn btn-light" onclick="printSection('fab')">PDF</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl" id="tbl-fab">
+            <thead><tr>
+              <th style="width:7%">Fecha<span class="th-sub">Creación</span></th>
+              <th style="width:4%">N° Orden</th>
+
+              <th style="width:9%">Producto</th>
+              <th style="width:5%">Cant.<span class="th-sub">Total</span></th>
+              <th style="width:13%">Problema / Observación</th>
+              <th style="width:5%">Cant.<span class="th-sub">Afectados</span></th>
+              <th style="width:8%">Responsable</th>
+              <th style="width:11%">Acción tomada</th>
+              <th style="width:3%">NC?</th>
+              <th style="width:8%">Decisión NC</th>
+              <th style="width:7%">Estado</th>
+              <th style="width:7%">Fecha<span class="th-sub">Cierre</span></th>
+              <th style="width:5%">Firma</th>
+            </tr></thead>
+            <tbody id="tbody-fab"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECCIÓN 2: INSTRUMENTAL
+  ══════════════════════════════════════════════ -->
+  <div class="section-page" id="sec-ins">
+
+    <div class="card">
+      <div class="doc-header">
+        <div class="logo-box"><span class="logo-text">BT</span></div>
+        <div class="doc-title-area">
+          <div class="doc-title">Registro de Seguimiento de Órdenes de Instrumental</div>
+          <div class="doc-subtitle">Control y trazabilidad de órdenes de instrumental</div>
+        </div>
+        <div class="doc-meta">
+          <div class="meta-cell"><span class="meta-label">Aprobación</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Entrada en vigor</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Código</span><input class="meta-input" type="text" value="REG-003"></div>
+          <div class="meta-cell"><span class="meta-label">Versión</span><span class="meta-value">01</span></div>
+        </div>
+      </div>
+      <div class="top-bar">
+        <div class="leg-item"><div class="leg-dot dot-open"></div> Abierta</div>
+        <div class="leg-item"><div class="leg-dot dot-closed"></div> Cerrada</div>
+        <div class="leg-item"><div class="leg-dot dot-none"></div> Sin estado</div>
+        <span class="sort-note">Abiertas primero · ordenadas por N° orden · cerradas al final</span>
+        <div class="counters">
+          <div class="cnt cnt-o">Abiertas: <span id="cnt-open-ins">0</span></div>
+          <div class="cnt cnt-c">Cerradas: <span id="cnt-closed-ins">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Órdenes de instrumental</div>
+        <div class="toolbar no-print">
+          <button class="btn btn-primary" onclick="addOrder('ins')">＋ Agregar orden</button>
+          <button class="btn btn-ok" onclick="saveSection('ins')">Guardar</button>
+          <button class="btn btn-light" onclick="printSection('ins')">PDF</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl" id="tbl-ins">
+            <thead><tr>
+              <th style="width:7%">Fecha<span class="th-sub">Creación</span></th>
+              <th style="width:4%">N° Orden</th>
+
+              <th style="width:9%">Producto</th>
+              <th style="width:5%">Cant.<span class="th-sub">Total</span></th>
+              <th style="width:13%">Problema / Observación</th>
+              <th style="width:5%">Cant.<span class="th-sub">Afectados</span></th>
+              <th style="width:8%">Responsable</th>
+              <th style="width:11%">Acción tomada</th>
+              <th style="width:3%">NC?</th>
+              <th style="width:8%">Decisión NC</th>
+              <th style="width:7%">Estado</th>
+              <th style="width:7%">Fecha<span class="th-sub">Cierre</span></th>
+              <th style="width:5%">Firma</th>
+            </tr></thead>
+            <tbody id="tbody-ins"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       SECCIÓN 3: ENSAMBLE
+  ══════════════════════════════════════════════ -->
+  <div class="section-page" id="sec-ens">
+
+    <div class="card">
+      <div class="doc-header">
+        <div class="logo-box"><span class="logo-text">BT</span></div>
+        <div class="doc-title-area">
+          <div class="doc-title">Registro de Seguimiento de Órdenes de Ensamble</div>
+          <div class="doc-subtitle">Control y trazabilidad de órdenes de ensamble</div>
+        </div>
+        <div class="doc-meta">
+          <div class="meta-cell"><span class="meta-label">Aprobación</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Entrada en vigor</span><input class="meta-input" type="text" value="__/__/__"></div>
+          <div class="meta-cell"><span class="meta-label">Código</span><input class="meta-input" type="text" value="REG-003"></div>
+          <div class="meta-cell"><span class="meta-label">Versión</span><span class="meta-value">01</span></div>
+        </div>
+      </div>
+      <div class="top-bar">
+        <div class="leg-item"><div class="leg-dot dot-open"></div> Abierta</div>
+        <div class="leg-item"><div class="leg-dot dot-closed"></div> Cerrada</div>
+        <div class="leg-item"><div class="leg-dot dot-none"></div> Sin estado</div>
+        <span class="sort-note">Abiertas primero · ordenadas por N° orden · cerradas al final</span>
+        <div class="counters">
+          <div class="cnt cnt-o">Abiertas: <span id="cnt-open-ens">0</span></div>
+          <div class="cnt cnt-c">Cerradas: <span id="cnt-closed-ens">0</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="section-title">Órdenes de ensamble</div>
+        <div class="toolbar no-print">
+          <button class="btn btn-primary" onclick="addOrder('ens')">＋ Agregar orden</button>
+          <button class="btn btn-ok" onclick="saveSection('ens')">Guardar</button>
+          <button class="btn btn-light" onclick="printSection('ens')">PDF</button>
+        </div>
+        <div class="tbl-wrap">
+          <table class="tbl" id="tbl-ens">
+            <thead><tr>
+              <th style="width:7%">Fecha<span class="th-sub">Creación</span></th>
+              <th style="width:4%">N° Orden</th>
+
+              <th style="width:9%">Producto</th>
+              <th style="width:5%">Cant.<span class="th-sub">Total</span></th>
+              <th style="width:13%">Problema / Observación</th>
+              <th style="width:5%">Cant.<span class="th-sub">Afectados</span></th>
+              <th style="width:8%">Responsable</th>
+              <th style="width:11%">Acción tomada</th>
+              <th style="width:3%">NC?</th>
+              <th style="width:8%">Decisión NC</th>
+              <th style="width:7%">Estado</th>
+              <th style="width:7%">Fecha<span class="th-sub">Cierre</span></th>
+              <th style="width:5%">Firma</th>
+            </tr></thead>
+            <tbody id="tbody-ens"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /layout -->
+
+<script>
+/* ── FIREBASE ────────────────────────────────────────────── */
+const FB_URL = "https://sgc-bt-default-rtdb.firebaseio.com";
+const SECTIONS = ['fab','ins','ens'];
+const LS_KEY = k => `reg_ordenes_v3_${k}`;
+
+let data    = { fab:[], ins:[], ens:[] };
+let lastTs  = { fab:0, ins:0, ens:0 };
+let isDirty = { fab:false, ins:false, ens:false };
+let pollInt = null;
+
+async function fbGet(path){ const r=await fetch(FB_URL+path+".json"); if(!r.ok) throw new Error(r.status); return r.json(); }
+async function fbSet(path,d){ const r=await fetch(FB_URL+path+".json",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}); if(!r.ok) throw new Error(r.status); return r.json(); }
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+function setSyncStatus(text, cls=""){
+  const el=document.getElementById("syncStatus"), dot=document.getElementById("liveDot");
+  if(el){ el.textContent=text; el.className=cls; }
+  if(dot) dot.style.display=cls==="sync-ok"?"block":"none";
+}
+
+/* ── LOAD ALL ────────────────────────────────────────────── */
+async function loadAll(){
+  setSyncStatus("Cargando…");
+  try{
+    const [rf,ri,re] = await Promise.all(SECTIONS.map(s=>fbGet(`/sgc/ordenes/${s}`)));
+    const remotes = {fab:rf, ins:ri, ens:re};
+    SECTIONS.forEach(s=>{
+      const remote = remotes[s];
+      const local  = lsGet(LS_KEY(s));
+      const rTs = remote&&remote.ts ? remote.ts : 0;
+      const lTs = local&&local.ts   ? local.ts  : 0;
+      if(remote && Array.isArray(remote.rows) && rTs >= lTs){
+        data[s] = remote.rows.map(fixOrder); lastTs[s]=rTs; lsSet(LS_KEY(s),remote);
+      } else if(local && Array.isArray(local.rows) && local.rows.length){
+        data[s] = local.rows.map(fixOrder); lastTs[s]=lTs;
+        fbSet(`/sgc/ordenes/${s}`, local);
+      } else {
+        data[s] = [];
+      }
+      isDirty[s] = false;
+      renderTable(s);
+    });
+    setSyncStatus("En vivo","sync-ok");
+    startPolling();
+  } catch(err){
+    SECTIONS.forEach(s=>{
+      const local = lsGet(LS_KEY(s));
+      data[s] = local && Array.isArray(local.rows) ? local.rows.map(fixOrder) : [];
+      renderTable(s);
+    });
+    setSyncStatus("Sin conexión","sync-error");
+    console.error(err);
+  }
+}
+
+/* ── SAVE SECTION ────────────────────────────────────────── */
+async function saveSection(s){
+  const ts = Date.now();
+  const payload = {rows: data[s], ts};
+  lsSet(LS_KEY(s), payload);
+  try{
+    await fbSet(`/sgc/ordenes/${s}`, payload);
+    // Actualizar timestamp liviano para el polling de otros clientes
+    await fbSet(`/sgc/ordenes_meta/${s}/ts`, ts);
+    lastTs[s] = ts;
+    isDirty[s] = false;
+    const t = new Date().toLocaleTimeString();
+    setSyncStatus("Guardado "+t,"sync-ok");
+    setTimeout(()=>{ if(!SECTIONS.some(sec=>isDirty[sec])) setSyncStatus("En vivo","sync-ok"); }, 2000);
+  } catch(e){ setSyncStatus("Sin conexión","sync-error"); }
+}
+
+function markDirty(s){
+  isDirty[s] = true;
+  setSyncStatus("Sin guardar","sync-error");
+}
+
+/* ── POLLING ─────────────────────────────────────────────── */
+function startPolling(){
+  if(pollInt) clearInterval(pollInt);
+  pollInt = setInterval(async ()=>{
+    try{
+      // Solo chequea timestamps livianos, uno por sección
+      const metas = await Promise.all(SECTIONS.map(s=>fbGet(`/sgc/ordenes_meta/${s}/ts`)));
+      const needsUpdate = SECTIONS.filter((s,i)=>
+        !isDirty[s] && metas[i] && metas[i] > lastTs[s]
+      );
+      if(needsUpdate.length){
+        // Solo descarga las secciones que realmente cambiaron
+        const updates = await Promise.all(needsUpdate.map(s=>fbGet(`/sgc/ordenes/${s}`)));
+        needsUpdate.forEach((s,i)=>{
+          const remote = updates[i];
+          if(remote && Array.isArray(remote.rows)){
+            data[s] = remote.rows.map(fixOrder); lastTs[s]=remote.ts;
+            lsSet(LS_KEY(s), remote); renderTable(s);
+          }
+        });
+      }
+      if(!SECTIONS.some(s=>isDirty[s])) setSyncStatus("En vivo","sync-ok");
+    } catch(e){ setSyncStatus("Sin conexión","sync-error"); }
+  }, 10000);
+}
+
+/* ── NAV ─────────────────────────────────────────────────── */
+function setActive(el){
+  document.querySelectorAll("nav a").forEach(a=>a.classList.remove("active"));
+  el.classList.add("active");
+}
+
+/* ── PRINT SECTION ───────────────────────────────────────── */
+function printSection(s){
+  const sec = document.getElementById("sec-"+s);
+  sec.classList.add("printing");
+  const cleanup = () => {
+    sec.classList.remove("printing");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  setTimeout(()=>window.print(), 100);
+}
+// Highlight nav link on scroll
+window.addEventListener("scroll", ()=>{
+  const links = document.querySelectorAll("nav a[href^='#']");
+  let current = links[0];
+  links.forEach(a=>{
+    const sec = document.querySelector(a.getAttribute("href"));
+    if(sec && sec.getBoundingClientRect().top <= 80) current = a;
+  });
+  links.forEach(a=>a.classList.remove("active"));
+  if(current) current.classList.add("active");
+}, {passive:true});
+
+/* ── ORDER HELPERS ───────────────────────────────────────── */
+const TODAY = (()=>{ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); })();
+
+function emptyProblem(d={}){
+  return {desc:d.desc||"",cantProd:d.cantProd||"",accion:d.accion||"",
+          responsable:d.responsable||"",nc:d.nc||"",decisionNC:d.decisionNC||"",
+          estado:d.estado||"none",fechaCierre:d.fechaCierre||"",firma:d.firma||""};
+}
+function fixOrder(o){
+  if(!Array.isArray(o.problems)||!o.problems.length) o.problems=[emptyProblem()];
+  else o.problems = o.problems.map(emptyProblem);
+  return o;
+}
+function isOpen(order){ return order.problems.some(p=>p.estado==="open"); }
+function allClosed(order){ return order.problems.length>0 && order.problems.every(p=>p.estado==="closed"); }
+function orderTier(o){ if(isOpen(o))return 0; if(allClosed(o))return 2; return 1; }
+function sortOrders(s){
+  data[s].sort((a,b)=>{
+    const ta=orderTier(a),tb=orderTier(b);
+    if(ta!==tb) return ta-tb;
+    const na=parseFloat(a.norden)||0, nb=parseFloat(b.norden)||0;
+    if(na!==nb) return na-nb;
+    return String(a.norden).localeCompare(String(b.norden));
+  });
+}
+function isDuplicate(s, norden, excludeIdx){
+  return data[s].some((o,i)=>i!==excludeIdx && o.norden.trim()!=="" && o.norden.trim()===norden.trim());
+}
+
+/* ── ADD ORDER ───────────────────────────────────────────── */
+function addOrder(s, d={}){
+  data[s].push({fecha:d.fecha||"",norden:d.norden||"",
+                producto:d.producto||"",cantTotal:d.cantTotal||"",
+                problems:d.problems?d.problems.map(emptyProblem):[emptyProblem()]});
+  renderTable(s); markDirty(s);
+}
+
+/* ── COUNTERS ────────────────────────────────────────────── */
+function updateCounters(s){
+  const open   = data[s].filter(isOpen).length;
+  const closed = data[s].filter(allClosed).length;
+  document.getElementById(`cnt-open-${s}`).textContent  = open;
+  document.getElementById(`cnt-closed-${s}`).textContent = closed;
+}
+
+/* ── VALIDATE CANT ───────────────────────────────────────── */
+function validateCant(s, oi){
+  const order = data[s][oi]; if(!order) return;
+  const total = parseFloat(order.cantTotal)||0;
+  const sum   = order.problems.reduce((a,p)=>a+(parseFloat(p.cantProd)||0),0);
+  const exceeded = total>0 && sum>total;
+  const tbody = document.getElementById(`tbody-${s}`);
+  tbody.querySelectorAll(`tr[data-oi="${oi}"]`).forEach(tr=>{
+    tr.querySelectorAll(".cant-prod-inp").forEach(inp=>inp.classList.toggle("over-limit",exceeded));
+    const w=tr.querySelector(".cant-warning"); if(w) w.classList.toggle("visible",exceeded);
+  });
+}
+
+/* ── RENDER TABLE ────────────────────────────────────────── */
+function renderTable(s){
+  sortOrders(s);
+  const tbody = document.getElementById(`tbody-${s}`);
+  tbody.innerHTML = "";
+
+  if(!data[s].length){
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td colspan="13" class="empty-state">Sin órdenes registradas — usá el botón <strong>Agregar orden</strong> para comenzar</td>`;
+    tbody.appendChild(tr);
+    updateCounters(s);
+    return;
+  }
+
+  data[s].forEach((order,oi)=>{
+    const nProbs = order.problems.length;
+    const stateCls = isOpen(order)?"row-open":allClosed(order)?"row-closed":"row-neutral";
+
+    order.problems.forEach((prob,pi)=>{
+      const tr = document.createElement("tr");
+      tr.className = stateCls;
+      tr.dataset.oi = oi; tr.dataset.pi = pi;
+
+      if(pi===0){
+        // FECHA
+        const tdF = makeTd(nProbs);
+        const inpF = makeInput("date","ci"); inpF.max=TODAY;
+        if(order.fecha) inpF.value=order.fecha;
+        inpF.addEventListener("change",()=>{ data[s][oi].fecha=inpF.value; markDirty(s); });
+        tdF.appendChild(inpF); tr.appendChild(tdF);
+
+        // N° ORDEN
+        const tdN = makeTd(nProbs);
+        const inpN = makeInput("text","ci ci-mono"); inpN.value=order.norden||""; inpN.placeholder="N°";
+        inpN.addEventListener("input",()=>{ data[s][oi].norden=inpN.value; markDirty(s); });
+        inpN.addEventListener("change",()=>{
+          const v=inpN.value.trim();
+          if(v && isDuplicate(s,v,oi)){ inpN.style.color="var(--err-text)"; inpN.title="N° duplicado"; }
+          else { inpN.style.color=""; inpN.title=""; data[s][oi].norden=v; }
+          markDirty(s);
+        });
+        tdN.appendChild(inpN); tr.appendChild(tdN);
+
+        // PRODUCTO
+        const tdP = makeTd(nProbs); tdP.className += " td-top";
+        const inpP = makeTextarea(); inpP.value=order.producto||""; inpP.placeholder="Producto";
+        inpP.addEventListener("input",()=>{ data[s][oi].producto=inpP.value; autoGrow(inpP); markDirty(s); });
+        tdP.appendChild(inpP); tr.appendChild(tdP);
+
+        // CANT TOTAL
+        const tdCT = makeTd(nProbs);
+        const inpCT = makeInput("number","ci ci-center"); inpCT.min="1"; inpCT.step="1";
+        if(order.cantTotal) inpCT.value=order.cantTotal;
+        inpCT.addEventListener("input",()=>{
+          const v=parseFloat(inpCT.value);
+          if(inpCT.value!==""&&(isNaN(v)||v<=0)) inpCT.value="";
+          else if(v&&v!==Math.floor(v)) inpCT.value=Math.floor(v);
+          data[s][oi].cantTotal=inpCT.value; validateCant(s,oi); markDirty(s);
+        });
+        tdCT.appendChild(inpCT); tr.appendChild(tdCT);
+      }
+
+      // PROBLEMA
+      const tdProb = document.createElement("td");
+      tdProb.className = "td-top td-pad0";
+      if(pi===0){
+        const pcRow = document.createElement("div"); pcRow.className="prob-count-row";
+        const pcLbl = document.createElement("span"); pcLbl.className="prob-count-lbl"; pcLbl.textContent="Problemas:";
+        const pcInp = document.createElement("input"); pcInp.type="number"; pcInp.className="prob-count-inp";
+        pcInp.min=1; pcInp.value=nProbs;
+        pcInp.addEventListener("change",()=>{
+          const n=Math.max(1,parseInt(pcInp.value)||1);
+          const cur=data[s][oi].problems.length;
+          if(n>cur) for(let i=cur;i<n;i++) data[s][oi].problems.push(emptyProblem());
+          else if(n<cur) data[s][oi].problems=data[s][oi].problems.slice(0,n);
+          renderTable(s); markDirty(s);
+        });
+        pcRow.appendChild(pcLbl); pcRow.appendChild(pcInp); tdProb.appendChild(pcRow);
+      }
+      const probInp = makeTextarea(); probInp.value=prob.desc||""; probInp.placeholder="Descripción del problema…";
+      probInp.addEventListener("input",()=>{ data[s][oi].problems[pi].desc=probInp.value; autoGrow(probInp); markDirty(s); });
+      tdProb.appendChild(probInp); tr.appendChild(tdProb);
+
+      // CANT AFECTADOS
+      const tdCA = document.createElement("td");
+      const caInp = makeInput("number","ci cant-prod-inp ci-center"); caInp.min="1"; caInp.step="1";
+      if(prob.cantProd) caInp.value=prob.cantProd;
+      caInp.addEventListener("input",()=>{
+        const v=parseFloat(caInp.value);
+        if(caInp.value!==""&&(isNaN(v)||v<=0)) caInp.value="";
+        else if(v&&v!==Math.floor(v)) caInp.value=Math.floor(v);
+        data[s][oi].problems[pi].cantProd=caInp.value; validateCant(s,oi); markDirty(s);
+      });
+      const warnSpan=document.createElement("span"); warnSpan.className="cant-warning"; warnSpan.textContent="Supera el total";
+      tdCA.appendChild(caInp); tdCA.appendChild(warnSpan); tr.appendChild(tdCA);
+
+      // RESPONSABLE
+      tr.appendChild(makeProbTd(s,oi,pi,"responsable",prob.responsable));
+
+      // ACCIÓN
+      tr.appendChild(makeProbTd(s,oi,pi,"accion",prob.accion));
+
+      // NC?
+      const tdNC = document.createElement("td");
+      const ncw = document.createElement("div"); ncw.className="nc-wrap";
+      ["si","no"].forEach(v=>{
+        const lbl=document.createElement("label");
+        const cb=document.createElement("input"); cb.type="checkbox"; cb.value=v;
+        cb.checked = prob.nc===v;
+        cb.addEventListener("change",()=>{
+          if(cb.checked) ncw.querySelectorAll("input").forEach(o=>{ if(o!==cb) o.checked=false; });
+          data[s][oi].problems[pi].nc = cb.checked?v:"";
+          const decSel=tr.querySelector(".sel-dec");
+          if(decSel){
+            const ncSi=data[s][oi].problems[pi].nc==="si";
+            decSel.disabled=!ncSi; decSel.style.opacity=ncSi?"1":"0.35";
+            if(!ncSi){ decSel.value=""; data[s][oi].problems[pi].decisionNC=""; decSel.className="sel-dec"; }
+          }
+          markDirty(s);
+        });
+        lbl.appendChild(cb); lbl.appendChild(document.createTextNode(" "+(v==="si"?"Sí":"No")));
+        ncw.appendChild(lbl);
+      });
+      tdNC.appendChild(ncw); tr.appendChild(tdNC);
+
+      // DECISIÓN NC
+      const tdDec = document.createElement("td");
+      const decSel = document.createElement("select"); decSel.className="sel-dec";
+      [["","— —"],["destruccion","Destrucción"],["reproceso","Reproceso"],["concesion","Concesión"]].forEach(([v,l])=>{
+        const opt=document.createElement("option"); opt.value=v; opt.textContent=l;
+        if(prob.decisionNC===v) opt.selected=true;
+        decSel.appendChild(opt);
+      });
+      decSel.addEventListener("change",()=>{
+        data[s][oi].problems[pi].decisionNC=decSel.value;
+        decSel.className="sel-dec"+(decSel.value?" dec-"+decSel.value:"");
+        markDirty(s);
+      });
+      decSel.className="sel-dec"+(prob.decisionNC?" dec-"+prob.decisionNC:"");
+      if(prob.nc!=="si"){ decSel.disabled=true; decSel.style.opacity="0.35"; }
+      tdDec.appendChild(decSel); tr.appendChild(tdDec);
+
+      // ESTADO
+      const tdEst = document.createElement("td");
+      const estSel = document.createElement("select");
+      estSel.className="sel-estado s-"+(prob.estado||"none");
+      [["none","Sin estado"],["open","Abierta"],["closed","Cerrada"]].forEach(([v,l])=>{
+        const opt=document.createElement("option"); opt.value=v; opt.textContent=l;
+        if((prob.estado||"none")===v) opt.selected=true;
+        estSel.appendChild(opt);
+      });
+      estSel.addEventListener("change",()=>{
+        data[s][oi].problems[pi].estado=estSel.value;
+        estSel.className="sel-estado s-"+estSel.value;
+        renderTable(s); markDirty(s);
+      });
+      tdEst.appendChild(estSel); tr.appendChild(tdEst);
+
+      // FECHA CIERRE
+      const tdFC = document.createElement("td");
+      const fcInp = makeInput("date","ci"); fcInp.max=TODAY;
+      if(prob.fechaCierre) fcInp.value=prob.fechaCierre;
+      if(prob.estado==="open"){ fcInp.disabled=true; }
+      fcInp.addEventListener("input",()=>{ data[s][oi].problems[pi].fechaCierre=fcInp.value; markDirty(s); });
+      tdFC.appendChild(fcInp); tr.appendChild(tdFC);
+
+      // FIRMA
+      const tdFi = document.createElement("td"); tdFi.className="td-top";
+      const fiInp = makeTextarea(); fiInp.value=prob.firma||"";
+      if(prob.estado==="open"){ fiInp.disabled=true; }
+      fiInp.addEventListener("input",()=>{ data[s][oi].problems[pi].firma=fiInp.value; autoGrow(fiInp); markDirty(s); });
+      tdFi.appendChild(fiInp); tr.appendChild(tdFi);
+
+      tbody.appendChild(tr);
+    });
+  });
+
+  updateCounters(s);
+  // Ajustar altura de todos los textareas recién renderizados
+  document.getElementById(`tbody-${s}`).querySelectorAll(".ci-ta").forEach(autoGrow);
+}
+
+/* ── TD / INPUT HELPERS ──────────────────────────────────── */
+function makeTd(rowspan=1){
+  const td=document.createElement("td");
+  td.rowSpan=rowspan; td.className="td-mid";
+  return td;
+}
+function makeInput(type, cls){
+  const inp=document.createElement("input");
+  inp.type=type; inp.className=cls;
+  return inp;
+}
+function makeProbTd(s,oi,pi,field,val){
+  const td=document.createElement("td");
+  td.className="td-top";
+  const ta=makeTextarea(); ta.value=val||"";
+  ta.addEventListener("input",()=>{ data[s][oi].problems[pi][field]=ta.value; autoGrow(ta); markDirty(s); });
+  td.appendChild(ta); return td;
+}
+function makeTextarea(cls="ci-ta"){
+  const ta=document.createElement("textarea");
+  ta.className=cls; ta.rows=1;
+  return ta;
+}
+function autoGrow(el){
+  el.style.height="auto";
+  el.style.height=el.scrollHeight+"px";
+}
+document.addEventListener("input", e=>{ if(e.target.classList.contains("ci-ta")) autoGrow(e.target); });
+
+/* ── INIT ────────────────────────────────────────────────── */
+window.addEventListener("DOMContentLoaded", loadAll);
+</script>
+</body>
+</html>
